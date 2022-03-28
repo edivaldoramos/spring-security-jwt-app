@@ -1,0 +1,23 @@
+version: '3.5'
+
+services:
+  db:
+    image: postgres:9.3
+    environment:
+      - POSTGRES_USER=postgres
+    ports:
+      - 5432:5432
+    volumes:
+      # Mapeando volume de dados
+      - psql-dados:/var/lib/postgresql/data
+      # Mapeando script de inicializacao das tabelas
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+#  app:
+#    build: ..
+#    depends_on:
+#      - db
+#    ports:
+#      - 8089:8089
+
+volumes:
+  psql-dados:

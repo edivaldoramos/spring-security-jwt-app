@@ -1,1 +1,22 @@
 
+server:
+  port: 8089
+spring:
+  profiles:
+    active: prod
+  application:
+    name: spring-security-jwt-app
+---
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/sec_db
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+app:
+  secret: sec-api-secret
+  expiration-ms: 600000
+
