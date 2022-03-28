@@ -1,5 +1,6 @@
 package com.github.edivaldoramos.config;
 
+import com.github.edivaldoramos.config.jwt.AccessDeniedHandlerJwt;
 import com.github.edivaldoramos.config.jwt.AuthEntryPointJwt;
 import com.github.edivaldoramos.config.jwt.AuthTokenFilter;
 import com.github.edivaldoramos.config.jwt.JwtUtils;
@@ -25,7 +26,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
   private final JwtUtils               jwtUtils;
   private final UserDetailsServiceImpl userDetailsService;
-  private final AuthEntryPointJwt      authEntryPointJwt;
+  private final AuthEntryPointJwt      unauthorizedHandler;
+  private final AccessDeniedHandlerJwt accessDeniedHandler;
 
   @Bean
   public PasswordEncoder passwordEncoder() {
@@ -37,6 +39,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     return new AuthTokenFilter(userDetailsService, jwtUtils);
   }
 
+  @Override
   protected void configure(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
     authenticationManagerBuilder.userDetailsService(userDetailsService)
         .passwordEncoder(passwordEncoder());
@@ -51,7 +54,10 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
   @Override
   protected void configure(HttpSecurity http) throws Exception {
     http.cors().and().csrf().disable()
-        .exceptionHandling().authenticationEntryPoint(authEntryPointJwt).and()
+        .exceptionHandling()
+        .accessDeniedHandler(accessDeniedHandler)
+        .authenticationEntryPoint(unauthorizedHandler)
+        .and()
         .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
         .authorizeRequests()
         .antMatchers("/api/auth/**").permitAll()
