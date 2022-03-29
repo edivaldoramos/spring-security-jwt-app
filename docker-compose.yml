@@ -12,12 +12,12 @@ services:
       - psql-dados:/var/lib/postgresql/data
       # Mapeando script de inicializacao das tabelas
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-#  app:
-#    build: ..
-#    depends_on:
-#      - db
-#    ports:
-#      - 8089:8089
+  app:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - 8089:8089
 
 volumes:
   psql-dados:

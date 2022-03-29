@@ -1,16 +1,22 @@
 package com.github.edivaldoramos.controller;
 
 import com.github.edivaldoramos.config.jwt.JwtUtils;
+import com.github.edivaldoramos.exception.TokenRefreshException;
+import com.github.edivaldoramos.model.RefreshToken;
 import com.github.edivaldoramos.model.Role;
 import com.github.edivaldoramos.model.RoleEnum;
 import com.github.edivaldoramos.model.User;
 import com.github.edivaldoramos.model.UserDetailsImpl;
+import com.github.edivaldoramos.model.request.LogOutRequest;
 import com.github.edivaldoramos.model.request.LoginRequest;
 import com.github.edivaldoramos.model.request.SignupRequest;
+import com.github.edivaldoramos.model.request.TokenRefreshRequest;
 import com.github.edivaldoramos.model.response.AuthResponse;
 import com.github.edivaldoramos.model.response.MessageResponse;
+import com.github.edivaldoramos.model.response.TokenRefreshResponse;
 import com.github.edivaldoramos.repository.RoleRepository;
 import com.github.edivaldoramos.repository.UserRepository;
+import com.github.edivaldoramos.service.RefreshTokenService;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,25 +46,28 @@ public class AuthController {
   private final JwtUtils              jwtUtils;
   private final PasswordEncoder       passwordEncoder;
   private final RoleRepository        roleRepository;
-  private final UserRepository        userRepository;
+  private final UserRepository      userRepository;
+  private final RefreshTokenService refreshTokenService;
 
   @PostMapping("/signin")
   public ResponseEntity<AuthResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
     Authentication authentication = authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
     );
-
     SecurityContextHolder.getContext().setAuthentication(authentication);
-    String jwt = jwtUtils.generateJwtToken(authentication);
-
     UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+    String jwt = jwtUtils.generateJwtToken(userDetails);
+
     List<String> roles = userDetails.getAuthorities().stream()
         .map(GrantedAuthority::getAuthority)
         .collect(Collectors.toList());
 
+    RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getId());
+
     return ResponseEntity.ok(
         new AuthResponse(
             jwt,
+            refreshToken.getToken(),
             userDetails.getId(),
             userDetails.getUsername(),
             userDetails.getEmail(),
@@ -119,4 +128,25 @@ public class AuthController {
 
     return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
   }
+
+  @PostMapping("/refreshtoken")
+  public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request){
+    String requestRefreshToken = request.getRefreshToken();
+    return refreshTokenService.findByToken(requestRefreshToken)
+        .map(refreshTokenService::verifyExpiration)
+        .map(RefreshToken::getUser)
+        .map(user -> {
+          String token = jwtUtils.generateTokenFromUsername(user.getUsername());
+          return ResponseEntity.ok(new TokenRefreshResponse(token, requestRefreshToken));
+        })
+        .orElseThrow(() -> new TokenRefreshException(requestRefreshToken,
+            "Refresh token is not in database!"));
+  }
+
+  @PostMapping("/logout")
+  public ResponseEntity<MessageResponse> logoutUser(@Valid @RequestBody LogOutRequest logOutRequest) {
+    refreshTokenService.deleteByUserId(logOutRequest.getUserId());
+    return ResponseEntity.ok(new MessageResponse("Log out successful!"));
+  }
+
 }

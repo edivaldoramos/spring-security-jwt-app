@@ -23,9 +23,8 @@ public class JwtUtils {
   @Value("${app.secret}")
   private String secret;
 
-  public String generateJwtToken(Authentication authentication) {
-    UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
-    return Jwts.builder().setSubject(userPrincipal.getUsername()).setIssuedAt(new Date()).setExpiration(new Date((new Date()).getTime() + expirationMs)).signWith(SignatureAlgorithm.HS512, secret).compact();
+  public String generateJwtToken(UserDetailsImpl userPrincipal) {
+    return generateTokenFromUsername(userPrincipal.getUsername());
   }
 
   public String getUserNameFromJwtToken(String token) {
@@ -38,6 +37,13 @@ public class JwtUtils {
     }
     return null;
   }
+
+  public String generateTokenFromUsername(String username) {
+    return Jwts.builder().setSubject(username).setIssuedAt(new Date())
+        .setExpiration(new Date((new Date()).getTime() + expirationMs)).signWith(SignatureAlgorithm.HS512, secret)
+        .compact();
+  }
+
 
   public MessageValidationToken validateNameFromJwtToken(String token) {
     try {
